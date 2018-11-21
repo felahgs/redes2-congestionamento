@@ -33,10 +33,9 @@ void Controller::datagram_was_sent( const uint64_t sequence_number,
             /* datagram was sent because of a timeout */ )
 {
   /* Default: take no action */
-  if(after_timeout) {
-    // the_window_size = 20;
-    cerr << "TIME OUT at" << send_timestamp;
-  }
+  // if(after_timeout) {
+  //   the_window_size = 20;
+  // }
 
   if ( debug_ ) {
     cerr << "At time " << send_timestamp
@@ -55,7 +54,7 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
                                /* when the ack was received (by sender) */
 {
   /* Default: take no action */
-  const uint64_t threshold = 90;
+
   const uint64_t rtt_value = timestamp_ack_received - send_timestamp_acked;
   
   //cerr << "Current RTT" << rtt_value << endl;
@@ -87,8 +86,9 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
  // }
 
   if (ack_counter >= the_window_size) {
+    const uint64_t threshold = 70;
     if (rtt_value >= threshold) {
-      the_window_size = (the_window_size * 3/4);
+      the_window_size =(the_window_size * 9/10);
     } else {
       the_window_size += 1;
     }
