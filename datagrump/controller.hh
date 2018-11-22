@@ -3,6 +3,15 @@
 
 #include <cstdint>
 #include <math.h> 
+#include <deque>
+
+
+/* Rtt class for for recents rtt */
+class RttReg {
+  public:
+     uint64_t value;
+     uint64_t rtime;
+};
 
 /* Congestion controller interface */
 
@@ -13,6 +22,15 @@ private:
   unsigned int the_window_size;
   unsigned int ack_counter;
   uint64_t total_rtt;
+  uint64_t rtt_standing;
+  uint64_t rtt_min;
+  uint64_t srtt;
+  std::deque<RttReg> rttQueue;
+  uint64_t rtime_rtt_min;
+  uint64_t v;
+  uint64_t lst_window;
+  unsigned int rpt_window;
+ 
 
   /* Add member variables here */
 

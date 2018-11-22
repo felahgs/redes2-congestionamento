@@ -7,7 +7,8 @@ using namespace std;
 
 /* Default constructor */
 Controller::Controller( const bool debug )
-  : debug_( debug ), the_window_size(20), ack_counter(0), total_rtt(0)
+  : debug_( debug ), the_window_size(100), ack_counter(0), total_rtt(0), rtt_standing(1000),
+   rtt_min(10000), srtt(9999), rttQueue(), rtime_rtt_min(1000), v(1), lst_window(0), rpt_window(0)
 {}
 
 /* Get current window size, in datagrams */
@@ -35,7 +36,7 @@ void Controller::datagram_was_sent( const uint64_t sequence_number,
   /* Default: take no action */
   if(after_timeout) {
     // the_window_size = 20;
-    cerr << "TIME OUT at" << send_timestamp;
+    // cerr << "TIME OUT at " << send_timestamp << endl;
   }
 
   if ( debug_ ) {
@@ -55,10 +56,82 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
                                /* when the ack was received (by sender) */
 {
   /* Default: take no action */
-  const uint64_t threshold = 90;
+  // const uint64_t threshold = 90;
   const uint64_t rtt_value = timestamp_ack_received - send_timestamp_acked;
+
+  if(rtt_value < rtt_min)
+    rtt_min = rtt_value;
   
-  //cerr << "Current RTT" << rtt_value << endl;
+  // cerr << "Current RTT: " << rtt_value << " Smalest RTT: " << rtt_min << endl;
+
+/** ----Implementação do COPA ---- **/
+
+   RttReg rtt;
+  rtt.rtime=timestamp_ack_received;
+  rtt.value = rtt_value;
+  rttQueue.push_back(rtt);
+
+  // cerr << "rtt obj: " << rtt.value << "RTT time: " << rtt.rtime << endl;
+  // cerr << "Queue size " << rttQueue.size() << " First element: " << rttQueue.front().value << endl;
+  
+  
+  if (srtt == 9999) 
+    srtt = rtt_value;
+  else {
+    srtt = (1 - 0.125) * srtt + 0.125 * (double) rtt_value;
+    // cerr << "srtt: " << srtt << endl;
+  }
+    
+  const uint64_t twnd = srtt/2;
+  // cerr << "Time window (for stt standing): " << twnd << endl;
+  
+  while (rttQueue.front().rtime < (timestamp_ack_received - twnd ))
+    rttQueue.pop_front();
+    
+  uint64_t minElement = rttQueue.front().value;
+  for (unsigned int it = 0; it < rttQueue.size(); ++it)
+  {
+     if(rttQueue[it].value < minElement)
+        minElement = rttQueue[it].value; 
+  }
+  rtt_standing = minElement;
+  // cerr << "rtt standing value: " << rtt_standing << endl;
+
+  // Algorithm Start here
+  uint64_t queing_delay = rtt_standing - rtt_min;
+    
+  double lambdaT = 1.0 / (0.5*queing_delay);
+
+  double lambda = the_window_size/rtt_standing;
+
+  cerr << "lambdaT: " << lambdaT << endl;
+  cerr << "lambda: " << lambda << endl;
+
+  if(lst_window == the_window_size) 
+  {
+    rpt_window++;
+    
+    if(rpt_window == 3) {
+      cerr << "INCREMENT: " << lambda << endl;
+      v+=v;
+    }
+  }
+  else v = 1;
+    
+  if(lambda <= lambdaT) {
+        // double a = v/(0.5 * the_window_size);
+        // cerr << "A: " << a << endl;
+        the_window_size = the_window_size + ceil(v/(0.5 * the_window_size));
+        // the_window_size = the_window_size + 2;
+
+  }
+  else {
+    the_window_size = the_window_size - ceil(v/(0.5 * the_window_size));
+    // the_window_size = the_window_size - 2;
+
+  }
+
+  lst_window = the_window_size;
 
 
   /** ----Implementação do aimd ----
@@ -86,16 +159,16 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
     //cerr << "LIMIT BREAK" << endl;
  // }
 
-  if (ack_counter >= the_window_size) {
-    if (rtt_value >= threshold) {
-      the_window_size = (the_window_size * 3/4);
-    } else {
-      the_window_size += 1;
-    }
-    ack_counter = 0;
-  } else {
-    ack_counter += 1;
-  }
+  // if (ack_counter >= the_window_size) {
+  //   if (rtt_value >= threshold) {
+  //     the_window_size = (the_window_size * 3/4);
+  //   } else {
+  //     the_window_size += 1;
+  //   }
+  //   ack_counter = 0;
+  // } else {
+  //   ack_counter += 1;
+  // }
 
   // if (package_counter >= the_window_size) {
   //   const uint64_t threshold = 90;
