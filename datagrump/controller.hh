@@ -21,16 +21,17 @@ private:
   bool debug_; /* Enables debugging output */
   unsigned int the_window_size;
   unsigned int ack_counter;
-  uint64_t total_rtt;
-  uint64_t rtt_standing;
-  uint64_t rtt_min;
-  uint64_t srtt;
-  std::deque<RttReg> rttQueue;
-  uint64_t rtime_rtt_min;
-  uint64_t v;
-  uint64_t lst_window;
-  unsigned int rpt_window;
- 
+  uint64_t total_rtt; 
+  uint64_t rtt_standing; // valor do rtt stantnding dentro de um ingervalor t1
+  uint64_t rtt_min; // Valor do rtt mínimo dentro de um intervalo de tempo t
+  double srtt; // RTT smoothing
+  // std::deque<RttReg> rttQueue;
+  uint64_t rtime_rtt_standing; // Tempo de recebimento do ultimo rtt standing
+  uint64_t rtime_rtt_min; // Tempo de recebinmento do ultimo rtt minimo
+  double v; // variável velocity para o COPA
+  unsigned int lst_window; // Janela da ultima mensagem recebida (Ack anterior)
+  int rpt_window; // Variável de controle para janelas com tam repetido
+  int slow_start;
 
   /* Add member variables here */
 
