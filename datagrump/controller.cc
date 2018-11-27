@@ -9,7 +9,7 @@ using namespace std;
 Controller::Controller( const bool debug )
   : debug_( debug ), the_window_size(20), ack_counter(0), total_rtt(0), rtt_standing(1000),
    rtt_min(1000), srtt(0), rtime_rtt_standing(0), rtime_rtt_min(0), v(1), lst_window(0), rpt_window(0),
-   slow_start(0)
+   slow_start(1)
 {}
 
 /* Get current window size, in datagrams */
@@ -93,7 +93,7 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
 
 
 
-  // Algorithm Start here
+  // Algorithm Starts here
   double queing_delay = rtt_standing - rtt_min;
     
   double lambdaT = 1.0 / (0.5*queing_delay);
@@ -104,15 +104,29 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
 
     
   if(lambda <= lambdaT) {
-        // double a = v/(0.5 * the_window_size);
-        // cerr << "A: " << a << endl;
-    the_window_size = the_window_size + v/(0.4 * the_window_size) + 0.8;
+
+      
+    // }
+    the_window_size = the_window_size + v/(0.5 * the_window_size) + 0.5;
         // the_window_size = the_window_size + 2;
   }
   else {
-    the_window_size = the_window_size - v/(0.4 * the_window_size) + 0.8;
+    the_window_size = the_window_size - v/(0.4 * the_window_size) + 0.4;
+    slow_start = 0;
     // the_window_size = the_window_size - 2;
   }
+
+  ack_counter += 1;
+  if (ack_counter >= the_window_size) {
+    if (slow_start == 1) {
+        if (lambda <= lambdaT) {
+          the_window_size *= 2;
+        } else {
+          slow_start = 0;
+        }
+    }
+  }
+
 
 
   if((int)lst_window == (int)the_window_size) 
@@ -120,74 +134,17 @@ void Controller::ack_received( const uint64_t sequence_number_acked,
     rpt_window++;
     
     if(rpt_window >= 3) {
-      cerr << "INCREMENT: " << lambda << endl;
+      //cerr << "INCREMENT: " << lambda << endl;
       v = v + v;
       rpt_window = 0;
     }
   }
   else v = 1;
 
-  // ack_counter += 1;
-  // if (ack_counter >= the_window_size) {
-  //   if (slow_start == 0) {
-  //       if (lambda <= lambda_T) {
-  //         the_window_size *= 2;
-  //       } else {
-  //         slow_start = 1;
-  //       }
-  //   }
 
   lst_window = the_window_size;
   
 
-
-  /** ----Implementação do aimd ----
-  / além de chegar um limite para fazer a redução da janela, é necessário considerar
-  / todos os pacotes que estavam conjestionados após a identificação do primeiro
-  / sem essa validação, o algoritmo irá considerar o RTT de todos esses pacotes
-  / reduzindo o tamanho da janela mais vezes do que o necessário
-  **/
-  //   const uint64_t threshold = 90;
-  // if(rtt_value >= threshold) {
-  //   cerr << "LIMIT BREAK" << endl;
-  //   the_window_size = (the_window_size * 1/2);
-  // } else {
-  //   the_window_size += 1;
-  // }
-
-  // const uint64_t threshold = 60;
-  // if(rtt_value >= threshold) {
-  //     the_window_size = 1 + floor(the_window_size * 9/10);
-  // } else {
-  //   the_window_size += 1;
-  // }
-
-    //if(rtt_value >= threshold) {
-    //cerr << "LIMIT BREAK" << endl;
- // }
-
-  // if (ack_counter >= the_window_size) {
-  //   if (rtt_value >= threshold) {
-  //     the_window_size = (the_window_size * 3/4);
-  //   } else {
-  //     the_window_size += 1;
-  //   }
-  //   ack_counter = 0;
-  // } else {
-  //   ack_counter += 1;
-  // }
-
-  // if (package_counter >= the_window_size) {
-  //   const uint64_t threshold = 90;
-  //   if (rtt_value >= threshold) {
-  //     the_window_size = the_window_size * 2 / 3;
-  //   } else {
-  //     the_window_size += 1;
-  //   }
-  //   package_counter = 0;
-  // } else {
-  //   package_counter += 1;
-  // }
 
   if ( debug_ ) {
     cerr << "At time " << timestamp_ack_received
